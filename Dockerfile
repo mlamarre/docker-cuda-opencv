@@ -107,3 +107,4 @@ WORKDIR /
 # Example on how to add on the above dockerfile to launch Python 3.6 scripts that uses cv2
 # SHELL ["/bin/bash", "-c", "source /opt/conda/envs/ocvpy3/bin/activate"]
 # RUN python -c "import cv2; print(cv2.__file__)"
+# 
