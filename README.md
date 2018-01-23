@@ -8,6 +8,8 @@
 * Adds TBB
 * Builds OpenCV with all the above (OpenCV cmake generation downloads several other packages like Intel IPP)
 
+OpenCV is installed in /opt/opencv-3.4.0
+
 Example:
 
 ```
