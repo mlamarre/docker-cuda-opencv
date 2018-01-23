@@ -7,3 +7,20 @@
 * Adds Eigen 3.3.4 
 * Adds TBB
 * Builds OpenCV with all the above (OpenCV cmake generation downloads several other packages like Intel IPP)
+
+Example:
+
+```
+nvidia-docker run --rm -ti mlamarre/docker-cuda-opencv:latest /bin/bash
+/# source activate ocvpy3
+(ocvpy3) /# python
+>>> import cv2
+```
+
+To call Python scripts using cv2 inside following RUN command do this first:
+
+```
+SHELL ["/bin/bash", "-c", "source /opt/conda/envs/ocvpy3/bin/activate"]
+```
+
+This activates the conda environment with the installed cv2.pyd inside the docker shell. 

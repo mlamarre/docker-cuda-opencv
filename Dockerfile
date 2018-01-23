@@ -93,7 +93,13 @@ cmake .. -DBUILD_TIFF=ON \
 -DPYTHON3_PACKAGES_PATH=$(/opt/conda/envs/ocvpy3/bin/python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())") \
 -DOPENCV_EXTRA_MODULES_PATH=/opencv_contrib-${OPENCV_VERSION}/modules \
 -DBUILD_opencv_legacy=OFF \
+-DCMAKE_BUILD_TYPE=RELEASE \
 -DCMAKE_INSTALL_PREFIX=/opencv-${OPENCV_VERSION}/install
 
 WORKDIR /opencv-${OPENCV_VERSION}/build
-RUN cmake --build . --target install --config Release
+RUN make -j $(nproc) install
+WORKDIR /
+
+# Example on how to build on the above dockerfile to launch Python 3.6 scripts that uses cv2
+# SHELL ["/bin/bash", "-c", "source /opt/conda/envs/ocvpy3/bin/activate"]
+# RUN python -c "import cv2; print(cv2.__file__)"
