@@ -47,12 +47,25 @@ ENV PATH /opt/conda/bin:$PATH
 # Create two conda env. just for the purpose of building 
 RUN conda create -y -n ocvpy3 python=3.6.4 numpy=1.14.0 mkl-devel
 RUN conda create -y -n ocvpy2 python=2.7.14 numpy=1.14.0 mkl-devel
+# Copy Intel MKL to /usr/local/lib which is on ld search path on this container already
+# Run ldconfig to refresh ld's cache and create links
+RUN cp /opt/conda/envs/ocvpy3/include/mkl*.h /usr/local/include\
+&& cp /opt/conda/envs/ocvpy3/lib/libmkl*.so /usr/local/lib && ldconfig -v
 
 # Recent version of Eigen C++ - the folder inside the zip  is some kind of hash
 ENV EIGEN_VERSION="3.3.4"
 ENV EIGEN_SUBPATH="5a0156e40feb"
-RUN wget http://bitbucket.org/eigen/eigen/get/3.3.4.zip -O ~/eigen-${EIGEN_VERSION}.zip \
-&& unzip ~/eigen-${EIGEN_VERSION}.zip
+RUN mkdir /temp \ 
+&& wget http://bitbucket.org/eigen/eigen/get/3.3.4.zip -O /temp/eigen-${EIGEN_VERSION}.zip \
+&& unzip /temp/eigen-${EIGEN_VERSION}.zip \
+&& cd /eigen-eigen-${EIGEN_SUBPATH}\
+&& mkdir build\
+&& cd build\
+&& cmake .. \
+-DCMAKE_INSTALL_PREFIX=/usr/local\
+&& make install\
+&& rm -rf /temp\
+&& rm -rf /eigen-eigen-${EIGEN_SUBPATH}
 
 WORKDIR /
 
@@ -78,14 +91,11 @@ cmake .. -DBUILD_TIFF=ON \
 -DWITH_TBB=ON \
 -DWITH_MKL=ON \
 -DMKL_WITH_TBB=ON \
--DMKL_ROOT_DIR=/opt/conda/envs/ocvpy3 \
 -DWITH_EIGEN=ON \
--DEIGEN_INCLUDE_PATH=/eigen-eigen-${EIGEN_SUBPATH} \
 -DWITH_V4L=ON \
 -DWITH_FFMPEG=ON \
 -DBUILD_TESTS=OFF \
 -DBUILD_PERF_TESTS=OFF \
--DZLIB_ROOT=/opt/conda/envs/ocvpy3 \
 -DPYTHON2_EXECUTABLE=/opt/conda/envs/ocvpy2/bin/python \
 -DPYTHON2_INCLUDE_DIR=$(/opt/conda/envs/ocvpy2/bin/python -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())") \
 -DPYTHON2_PACKAGES_PATH=$(/opt/conda/envs/ocvpy2/bin/python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())") \
@@ -95,7 +105,7 @@ cmake .. -DBUILD_TIFF=ON \
 -DOPENCV_EXTRA_MODULES_PATH=/opencv_contrib-${OPENCV_VERSION}/modules \
 -DBUILD_opencv_legacy=OFF \
 -DCMAKE_BUILD_TYPE=RELEASE \
--DCMAKE_INSTALL_PREFIX=/opt/opencv-${OPENCV_VERSION} \
+-DCMAKE_INSTALL_PREFIX=/usr/local \
 && cd /opencv-${OPENCV_VERSION}/build \
 && make -j $(nproc) install \
 && rm -rf /opencv-${OPENCV_VERSION} \
@@ -103,6 +113,7 @@ cmake .. -DBUILD_TIFF=ON \
 && rm -rf /temp
 
 WORKDIR /
+RUN ldconfig -v
 
 # Example on how to add on the above dockerfile to launch Python 3.6 scripts that uses cv2
 # SHELL ["/bin/bash", "-c", "source /opt/conda/envs/ocvpy3/bin/activate"]
