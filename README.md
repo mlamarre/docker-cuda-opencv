@@ -19,10 +19,11 @@ nvidia-docker run --rm -ti mlamarre/docker-cuda-opencv:latest /bin/bash
 >>> import cv2
 ```
 
-To call Python scripts using cv2 inside following RUN command do this first:
-
+To call Python scripts using cv2 inside follow this example:
 ```
-SHELL ["/bin/bash", "-c", "source /opt/conda/envs/ocvpy3/bin/activate"]
+/bin/bash -c "source /opt/conda/envs/ocvpy3/bin/activate ocvpy3 && python setup.py install --yes USE_AVX_INSTRUCTIONS"\
 ```
 
-This activates the conda environment with the installed cv2.pyd inside the docker shell. 
+This activates the conda environment with the installed cv2.pyd and runs python from that conda env.
+
+The example above runs a setup.py for another project (took this from a docker building dlib). If you want to create other environment maybe with pip and virtualenv you can try doing `python setup.py bdist_wheel` and copy the resulting whl file to a persisted path. Finally you could build your own environment using `pip install [wheel file]`. 
