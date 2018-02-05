@@ -11,15 +11,17 @@ RUN apt-get update && \
         wget \
         unzip \
         yasm \
-        pkg-config 
+        pkg-config \
+        libcurl4-openssl-dev \
+        zlib1g-dev \
+        nano
         
 # Building a recent CMake to benefit from improvement in the CUDA workflow
 ENV CMAKE_VERSION=3.10
-ENV CMAKE_BUILD=2
-RUN apt-get install -y libcurl4-openssl-dev zlib1g-dev
-RUN mkdir ~/temp && cd ~/temp && wget https://cmake.org/files/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.${CMAKE_BUILD}.tar.gz\
+ENV CMAKE_BUILD=2.1
+RUN mkdir ~/temp && cd ~/temp && wget https://github.com/mlamarre/CMake/archive/v${CMAKE_VERSION}.${CMAKE_BUILD}.tar.gz -O cmake-${CMAKE_VERSION}.${CMAKE_BUILD}.tar.gz\
 && tar -xzvf cmake-${CMAKE_VERSION}.${CMAKE_BUILD}.tar.gz \
-&& cd ~/temp/cmake-${CMAKE_VERSION}.${CMAKE_BUILD}/ && ./bootstrap --system-curl && make -j$(nproc) && make install && make clean && cd ~ && rm -rf temp 
+&& cd ~/temp/CMake-${CMAKE_VERSION}.${CMAKE_BUILD}/ && ./bootstrap --system-curl && make -j$(nproc) && make install && make clean && cd ~ && rm -rf temp 
 
 WORKDIR /
 
@@ -34,7 +36,8 @@ RUN apt-get update && apt-get install -y \
         libjasper-dev \
         libavformat-dev \
         libpq-dev \
-        libhdf5-dev
+        libhdf5-dev \
+    && apt-get clean
 
 # Using Miniconda to get Python 2.7.x and 3.6.y to get Numpy linked with Intel MKL for max performance
 RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
@@ -78,8 +81,10 @@ ENV OPENCV_VERSION="3.4.0"
 RUN mkdir /temp \ 
 && wget -nv https://github.com/opencv/opencv_contrib/archive/${OPENCV_VERSION}.zip -O /temp/opencvcontrib-${OPENCV_VERSION}.zip \
 && wget -nv https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip -O /temp/opencv-${OPENCV_VERSION}.zip \
+&& wget -nv https://github.com/VLAM3D/opencv-python/archive/9.1.zip -O /temp/opencv-python-9.1.zip \
 && unzip /temp/opencv-${OPENCV_VERSION}.zip\
 && unzip /temp/opencvcontrib-${OPENCV_VERSION}.zip\
+&& unzip /temp/opencv-python-9.1.zip\
 && cd /opencv-${OPENCV_VERSION} && mkdir build && cd build && \
 cmake .. -DBUILD_TIFF=ON \
 -DBUILD_opencv_java=OFF \
@@ -108,14 +113,24 @@ cmake .. -DBUILD_TIFF=ON \
 -DCMAKE_INSTALL_PREFIX=/usr/local \
 && cd /opencv-${OPENCV_VERSION}/build \
 && make -j $(nproc) install \
+&& mkdir -p /usr/local/etc/wheels \
+&& cd /opencv-python-9.1 \
+&& python find_version.py \
+&& cp /opt/conda/envs/ocvpy3/lib/python3.6/site-packages/cv2.cpython-36m-x86_64-linux-gnu.so /opencv-python-9.1/cv2/ \
+&& /bin/bash -c "source /opt/conda/envs/ocvpy3/bin/activate ocvpy3 && python setup.py bdist_wheel" \
+&& rm /opencv-python-9.1/cv2/cv2.cpython-36m-x86_64-linux-gnu.so \
+&& cp /opt/conda/envs/ocvpy2/lib/python2.7/site-packages/cv2.so /opencv-python-9.1/cv2/ \
+&& /bin/bash -c "source /opt/conda/envs/ocvpy2/bin/activate ocvpy2 && python setup.py bdist_wheel" \
+&& cp /opencv-python-9.1/dist/opencv_python-*.whl /usr/local/etc/wheels \
+&& cd / \
+&& rm -rf /opencv-python-9.1 \
 && rm -rf /opencv-${OPENCV_VERSION} \
 && rm -rf /opencv_contrib-${OPENCV_VERSION} \
 && rm -rf /temp
 
-WORKDIR /
 RUN ldconfig -v
 
 # Example on how to add on the above dockerfile to launch Python 3.6 scripts that uses cv2
-# SHELL ["/bin/bash", "-c", "source /opt/conda/envs/ocvpy3/bin/activate"]
+# SHELL ["/bin/sh", "-c", "source /opt/conda/envs/ocvpy3/bin/activate"]
 # RUN python -c "import cv2; print(cv2.__file__)"
 # 
