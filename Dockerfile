@@ -111,6 +111,10 @@ cmake .. -DBUILD_TIFF=ON \
 -DBUILD_opencv_legacy=OFF \
 -DCMAKE_BUILD_TYPE=RELEASE \
 -DCMAKE_INSTALL_PREFIX=/usr/local \
+-DCMAKE_SKIP_BUILD_RPATH=BOOL:FALSE \
+-CMAKE_BUILD_WITH_INSTALL_RPATH=BOOL:FALSE \
+-CMAKE_INSTALL_RPATH="$ORIGIN/" \
+-CMAKE_INSTALL_RPATH_USE_LINK_PATH=BOOL:TRUE \
 && cd /opencv-${OPENCV_VERSION}/build \
 && make -j $(nproc) install \
 && mkdir -p /usr/local/etc/wheels \
