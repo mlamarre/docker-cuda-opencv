@@ -7,6 +7,7 @@
 * Adds Eigen 3.3.4 
 * Adds TBB
 * Builds OpenCV with all the above (OpenCV cmake generation downloads several other packages like Intel IPP)
+* Builds cv2 python module without CUDA and without Intel MKL to make wheel file slightly more portable (many apt-get package still required)
 
 OpenCV is installed in /opt/opencv-3.4.0
 
@@ -26,4 +27,4 @@ To call Python scripts using cv2 inside follow this example:
 
 This activates the conda environment with the installed cv2.pyd and runs python from that conda env.
 
-The example above runs a setup.py for another project (took this from a docker building dlib). If you want to create other environment maybe with pip and virtualenv you can try doing `python setup.py bdist_wheel` and copy the resulting whl file to a persisted path. Finally you could build your own environment using `pip install [wheel file]`. 
+The example above runs a setup.py for another project (took this from a docker building dlib). You can build your own environment using `pip install [wheel file]`. The setuptools wheel files are installed in `/usr/local/etc/wheels` 

@@ -86,6 +86,7 @@ RUN mkdir /temp \
 && unzip /temp/opencvcontrib-${OPENCV_VERSION}.zip\
 && unzip /temp/opencv-python-9.1.zip\
 && cd /opencv-${OPENCV_VERSION} && mkdir build && cd build && \
+# BUILD SHARED LIBS FOR C++ DEV WITH CUDA
 cmake .. -DBUILD_TIFF=ON \
 -DBUILD_opencv_java=OFF \
 -DWITH_CUDA=ON \
@@ -101,29 +102,48 @@ cmake .. -DBUILD_TIFF=ON \
 -DWITH_FFMPEG=ON \
 -DBUILD_TESTS=OFF \
 -DBUILD_PERF_TESTS=OFF \
+-DBUILD_opencv_python2=OFF\
+-DBUILD_opencv_python3=OFF\
+-DOPENCV_EXTRA_MODULES_PATH=/opencv_contrib-${OPENCV_VERSION}/modules \
+-DBUILD_opencv_legacy=OFF \
+-DCMAKE_BUILD_TYPE=RELEASE \
+-DCMAKE_INSTALL_PREFIX=/usr/local \
+&& make -j $(nproc) install \
+# BUILD PYTHON BINDING SEPARATELY WITHOUT CUDA
+&& cd /opencv-${OPENCV_VERSION} && mkdir build_python && cd build_python && \
+cmake .. -DBUILD_TIFF=ON \
+-DBUILD_opencv_java=OFF \
+-DWITH_CUDA=OFF \
+-DWITH_OPENGL=ON \
+-DWITH_OPENCL=ON \
+-DWITH_IPP=ON \
+-DWITH_TBB=ON \
+-DWITH_LAPACK=OFF \
+-DWITH_EIGEN=ON \
+-DWITH_V4L=ON \
+-DWITH_FFMPEG=ON \
+-DBUILD_TESTS=OFF \
+-DBUILD_PERF_TESTS=OFF \
+-DOPENCV_EXTRA_MODULES_PATH=/opencv_contrib-${OPENCV_VERSION}/modules \
+-DBUILD_opencv_legacy=OFF \
+-DBUILD_SHARED_LIBS=OFF \
+-DCMAKE_BUILD_TYPE=RELEASE \
+-DCMAKE_INSTALL_PREFIX=/opencv-python-9.1/cv2 \
 -DPYTHON2_EXECUTABLE=/opt/conda/envs/ocvpy2/bin/python \
 -DPYTHON2_INCLUDE_DIR=$(/opt/conda/envs/ocvpy2/bin/python -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())") \
 -DPYTHON2_PACKAGES_PATH=$(/opt/conda/envs/ocvpy2/bin/python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())") \
 -DPYTHON3_EXECUTABLE=/opt/conda/envs/ocvpy3/bin/python \
 -DPYTHON3_INCLUDE_DIR=$(/opt/conda/envs/ocvpy3/bin/python -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())") \
 -DPYTHON3_PACKAGES_PATH=$(/opt/conda/envs/ocvpy3/bin/python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())") \
--DOPENCV_EXTRA_MODULES_PATH=/opencv_contrib-${OPENCV_VERSION}/modules \
--DBUILD_opencv_legacy=OFF \
--DCMAKE_BUILD_TYPE=RELEASE \
--DCMAKE_INSTALL_PREFIX=/usr/local \
--DCMAKE_SKIP_BUILD_RPATH=BOOL:FALSE \
--CMAKE_BUILD_WITH_INSTALL_RPATH=BOOL:FALSE \
--CMAKE_INSTALL_RPATH="$ORIGIN/" \
--CMAKE_INSTALL_RPATH_USE_LINK_PATH=BOOL:TRUE \
-&& cd /opencv-${OPENCV_VERSION}/build \
-&& make -j $(nproc) install \
+&& make -j$(nproc) opencv_python3 \
+&& make -j$(nproc) opencv_python2 \
+&& cp /opencv-${OPENCV_VERSION}/build_python/lib/python3/cv2.*.so /opencv-python-9.1/cv2/ \
 && mkdir -p /usr/local/etc/wheels \
 && cd /opencv-python-9.1 \
 && python find_version.py \
-&& cp /opt/conda/envs/ocvpy3/lib/python3.6/site-packages/cv2.cpython-36m-x86_64-linux-gnu.so /opencv-python-9.1/cv2/ \
 && /bin/bash -c "source /opt/conda/envs/ocvpy3/bin/activate ocvpy3 && python setup.py bdist_wheel" \
 && rm /opencv-python-9.1/cv2/cv2.cpython-36m-x86_64-linux-gnu.so \
-&& cp /opt/conda/envs/ocvpy2/lib/python2.7/site-packages/cv2.so /opencv-python-9.1/cv2/ \
+&& cp /opencv-${OPENCV_VERSION}/build_python/lib/cv2.so /opencv-python-9.1/cv2/ \
 && /bin/bash -c "source /opt/conda/envs/ocvpy2/bin/activate ocvpy2 && python setup.py bdist_wheel" \
 && cp /opencv-python-9.1/dist/opencv_python-*.whl /usr/local/etc/wheels \
 && cd / \
@@ -134,7 +154,5 @@ cmake .. -DBUILD_TIFF=ON \
 
 RUN ldconfig -v
 
-# Example on how to add on the above dockerfile to launch Python 3.6 scripts that uses cv2
-# SHELL ["/bin/sh", "-c", "source /opt/conda/envs/ocvpy3/bin/activate"]
-# RUN python -c "import cv2; print(cv2.__file__)"
-# 
+# setuptools wheel files are saved in /usr/local/etc/wheels
+# they depends only apt-get packages installed in this file (no CUDA, no MKL for Python version)
