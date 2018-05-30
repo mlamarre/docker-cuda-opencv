@@ -1,6 +1,6 @@
 # Dockerfile for OpenCV with CUDA C++, Python 2.7 / 3.6 development 
 # Pulling CUDA-CUDNN image from nvidia
-FROM nvidia/cuda:9.1-cudnn7-devel-ubuntu16.04
+FROM nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04
 MAINTAINER Mathieu Lamarre <mathieu.lamarre@gmail.com>
 
 # Basic toolchain 
@@ -14,7 +14,8 @@ RUN apt-get update && \
         pkg-config \
         libcurl4-openssl-dev \
         zlib1g-dev \
-        nano
+        nano && \
+    apt-get autoremove -y
         
 # Building a recent CMake to benefit from improvement in the CUDA workflow
 ENV CMAKE_VERSION=3.10
@@ -36,20 +37,21 @@ RUN apt-get update && apt-get install -y \
         libjasper-dev \
         libavformat-dev \
         libpq-dev \
-        libhdf5-dev \
-    && apt-get clean
+        libhdf5-dev && \
+    apt-get autoremove -y
 
 # Using Miniconda to get Python 2.7.x and 3.6.y to get Numpy linked with Intel MKL for max performance
 RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
-    wget --quiet https://repo.continuum.io/miniconda/Miniconda3-4.3.31-Linux-x86_64.sh -O ~/miniconda.sh && \
+    wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
     /bin/bash ~/miniconda.sh -b -p /opt/conda && \
-    rm ~/miniconda.sh
+    rm ~/miniconda.sh && \
+    /opt/conda/bin/conda update -n base conda
 
 ENV PATH /opt/conda/bin:$PATH
 
 # Create two conda env. just for the purpose of building 
-RUN conda create -y -n ocvpy3 python=3.6.4 numpy=1.14.0 mkl-devel
-RUN conda create -y -n ocvpy2 python=2.7.14 numpy=1.14.0 mkl-devel
+RUN conda create -y -n ocvpy3 python=3.6.5 numpy=1.14.3 mkl-devel
+RUN conda create -y -n ocvpy2 python=2.7.15 numpy=1.14.3 mkl-devel
 # Copy Intel MKL to /usr/local/lib which is on ld search path on this container already
 # Run ldconfig to refresh ld's cache and create links
 RUN cp /opt/conda/envs/ocvpy3/include/mkl*.h /usr/local/include\
@@ -72,7 +74,8 @@ RUN mkdir /temp \
 
 WORKDIR /
 
-ENV OPENCV_VERSION="3.4.0"
+ENV OPENCV_VERSION="3.4.1"
+ENV OPENCV_PYTHON_VERSION="9.2"
 
 # Fetching OpenCV and OpenCV contrib sources
 # Generate the makefile with CMake - note that IPP is downloaded at generation time
@@ -81,16 +84,17 @@ ENV OPENCV_VERSION="3.4.0"
 RUN mkdir /temp \ 
 && wget -nv https://github.com/opencv/opencv_contrib/archive/${OPENCV_VERSION}.zip -O /temp/opencvcontrib-${OPENCV_VERSION}.zip \
 && wget -nv https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip -O /temp/opencv-${OPENCV_VERSION}.zip \
-&& wget -nv https://github.com/VLAM3D/opencv-python/archive/9.1.zip -O /temp/opencv-python-9.1.zip \
+&& wget -nv https://github.com/VLAM3D/opencv-python/archive/${OPENCV_PYTHON_VERSION}.zip -O /temp/opencv-python.zip \
 && unzip /temp/opencv-${OPENCV_VERSION}.zip\
 && unzip /temp/opencvcontrib-${OPENCV_VERSION}.zip\
-&& unzip /temp/opencv-python-9.1.zip\
+&& unzip /temp/opencv-python.zip\
 && cd /opencv-${OPENCV_VERSION} && mkdir build && cd build && \
 # BUILD SHARED LIBS FOR C++ DEV WITH CUDA
 cmake .. -DBUILD_TIFF=ON \
 -DBUILD_opencv_java=OFF \
 -DWITH_CUDA=ON \
--DCUDA_ARCH_BIN:STRING="6.1" \
+-DCUDA_ARCH_BIN:STRING="6.1 7.0" \
+-DCUDA_ARCH_PTX:STRING="6.1 7.0" \
 -DWITH_OPENGL=ON \
 -DWITH_OPENCL=ON \
 -DWITH_IPP=ON \
@@ -127,7 +131,7 @@ cmake .. -DBUILD_TIFF=ON \
 -DBUILD_opencv_legacy=OFF \
 -DBUILD_SHARED_LIBS=OFF \
 -DCMAKE_BUILD_TYPE=RELEASE \
--DCMAKE_INSTALL_PREFIX=/opencv-python-9.1/cv2 \
+-DCMAKE_INSTALL_PREFIX=/opencv-python-${OPENCV_PYTHON_VERSION}/cv2 \
 -DPYTHON2_EXECUTABLE=/opt/conda/envs/ocvpy2/bin/python \
 -DPYTHON2_INCLUDE_DIR=$(/opt/conda/envs/ocvpy2/bin/python -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())") \
 -DPYTHON2_PACKAGES_PATH=$(/opt/conda/envs/ocvpy2/bin/python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())") \
@@ -136,17 +140,17 @@ cmake .. -DBUILD_TIFF=ON \
 -DPYTHON3_PACKAGES_PATH=$(/opt/conda/envs/ocvpy3/bin/python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())") \
 && make -j$(nproc) opencv_python3 \
 && make -j$(nproc) opencv_python2 \
-&& cp /opencv-${OPENCV_VERSION}/build_python/lib/python3/cv2.*.so /opencv-python-9.1/cv2/ \
+&& cp /opencv-${OPENCV_VERSION}/build_python/lib/python3/cv2.*.so /opencv-python-${OPENCV_PYTHON_VERSION}/cv2/ \
 && mkdir -p /usr/local/etc/wheels \
-&& cd /opencv-python-9.1 \
+&& cd /opencv-python-${OPENCV_PYTHON_VERSION} \
 && python find_version.py \
-&& /bin/bash -c "source /opt/conda/envs/ocvpy3/bin/activate ocvpy3 && python setup.py bdist_wheel" \
-&& rm /opencv-python-9.1/cv2/cv2.cpython-36m-x86_64-linux-gnu.so \
-&& cp /opencv-${OPENCV_VERSION}/build_python/lib/cv2.so /opencv-python-9.1/cv2/ \
-&& /bin/bash -c "source /opt/conda/envs/ocvpy2/bin/activate ocvpy2 && python setup.py bdist_wheel" \
-&& cp /opencv-python-9.1/dist/opencv_python-*.whl /usr/local/etc/wheels \
+&& /bin/bash -c "source /opt/conda/bin/activate ocvpy3 && python setup.py bdist_wheel" \
+&& rm /opencv-python-${OPENCV_PYTHON_VERSION}/cv2/cv2.cpython-36m-x86_64-linux-gnu.so \
+&& cp /opencv-${OPENCV_VERSION}/build_python/lib/cv2.so /opencv-python-${OPENCV_PYTHON_VERSION}/cv2/ \
+&& /bin/bash -c "source /opt/conda/bin/activate ocvpy2 && python setup.py bdist_wheel" \
+&& cp /opencv-python-${OPENCV_PYTHON_VERSION}/dist/opencv_python-*.whl /usr/local/etc/wheels \
 && cd / \
-&& rm -rf /opencv-python-9.1 \
+&& rm -rf /opencv-python-${OPENCV_PYTHON_VERSION} \
 && rm -rf /opencv-${OPENCV_VERSION} \
 && rm -rf /opencv_contrib-${OPENCV_VERSION} \
 && rm -rf /temp
