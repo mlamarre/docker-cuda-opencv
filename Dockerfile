@@ -49,19 +49,20 @@ RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
 
 ENV PATH /opt/conda/bin:$PATH
 
-# Create two conda env. just for the purpose of building 
-RUN conda create -y -n ocvpy3 python=3.6.5 numpy=1.14.3 mkl-devel
-RUN conda create -y -n ocvpy2 python=2.7.15 numpy=1.14.3 mkl-devel
+# Create two conda env. just for the purpose of building
+RUN conda update -n base conda && conda create -y -n stab python=3.6 blas=*=mkl numpy future
+RUN conda create -y -n ocvpy3 python=3.6 blas=*=mkl numpy future mkl-devel
+RUN conda create -y -n ocvpy2 python=2.7 blas=*=mkl numpy future mkl-devel
 # Copy Intel MKL to /usr/local/lib which is on ld search path on this container already
 # Run ldconfig to refresh ld's cache and create links
 RUN cp /opt/conda/envs/ocvpy3/include/mkl*.h /usr/local/include\
 && cp /opt/conda/envs/ocvpy3/lib/libmkl*.so /usr/local/lib && ldconfig -v
 
 # Recent version of Eigen C++ - the folder inside the zip  is some kind of hash
-ENV EIGEN_VERSION="3.3.4"
-ENV EIGEN_SUBPATH="5a0156e40feb"
+ENV EIGEN_VERSION="3.3.5"
+ENV EIGEN_SUBPATH="b3f3d4950030"
 RUN mkdir /temp \ 
-&& wget http://bitbucket.org/eigen/eigen/get/3.3.4.zip -O /temp/eigen-${EIGEN_VERSION}.zip \
+&& wget http://bitbucket.org/eigen/eigen/get/${EIGEN_VERSION}.zip -O /temp/eigen-${EIGEN_VERSION}.zip \
 && unzip /temp/eigen-${EIGEN_VERSION}.zip \
 && cd /eigen-eigen-${EIGEN_SUBPATH}\
 && mkdir build\
@@ -94,7 +95,7 @@ cmake .. -DBUILD_TIFF=ON \
 -DBUILD_opencv_java=OFF \
 -DWITH_CUDA=ON \
 -DCUDA_ARCH_BIN:STRING="6.1 7.0" \
--DCUDA_ARCH_PTX:STRING="6.1 7.0" \
+-DCUDA_ARCH_PTX:STRING="5.0 6.1 7.0" \
 -DWITH_OPENGL=ON \
 -DWITH_OPENCL=ON \
 -DWITH_IPP=ON \
