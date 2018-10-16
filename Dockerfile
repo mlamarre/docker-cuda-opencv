@@ -50,7 +50,7 @@ RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
 ENV PATH /opt/conda/bin:$PATH
 
 # Create two conda env. just for the purpose of building
-RUN conda update -n base conda && conda create -y -n stab python=3.6 blas=*=mkl numpy future
+RUN conda update -n base conda
 RUN conda create -y -n ocvpy3 python=3.6 blas=*=mkl numpy future mkl-devel
 RUN conda create -y -n ocvpy2 python=2.7 blas=*=mkl numpy future mkl-devel
 # Copy Intel MKL to /usr/local/lib which is on ld search path on this container already
